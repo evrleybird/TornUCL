@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Baseball Stats App</title>
+    <link rel="stylesheet" href="https://pyscript.net/alpha/pyscript.css">
+    <style>
+        body { font-family: 'Segoe UI', Arial, Helvetica, sans-serif; margin: 40px; }
+        label, select, input { font-size: 1.2em; }
+    </style>
+    <script>
+        function goToTeamPage(event) {
+            event.preventDefault();
+            const team = document.getElementById('team').value;
+            // Redirect each team to its own HTML file in the Backend/templates folder
+            if (team === "Arizona Diamondbacks") {
+                window.location.href = "../Backend/templates/ArizonaDiamondbacks.html";
+            } else if (team === "Atlanta Braves") {
+                window.location.href = "../Backend/templates/AtlantaBraves.html";
+            } else if (team === "Baltimore Orioles") {
+                window.location.href = "../Backend/templates/BaltimoreOrioles.html";
+            } else if (team === "Boston Red Sox") {
+                window.location.href = "../Backend/templates/BostonRedSox.html";
+            } else if (team === "Chicago Cubs") {
+                window.location.href = "../Backend/templates/ChicagoCubs.html";
+            } else if (team === "Chicago White Sox") {
+                window.location.href = "../Backend/templates/ChicagoWhiteSox.html";
+            } else if (team === "Cincinnati Reds") {
+                window.location.href = "../Backend/templates/CincinnatiReds.html";
+            } else if (team === "Cleveland Guardians") {
+                window.location.href = "../Backend/templates/ClevelandGuardians.html";
+            } else if (team === "Colorado Rockies") {
+                window.location.href = "../Backend/templates/ColoradoRockies.html";
+            } else if (team === "Detroit Tigers") {
+                window.location.href = "../Backend/templates/DetroitTigers.html";
+            } else if (team === "Houston Astros") {
+                window.location.href = "../Backend/templates/HoustonAstros.html";
+            } else if (team === "Kansas City Royals") {
+                window.location.href = "../Backend/templates/KansasCityRoyals.html";
+            } else if (team === "Los Angeles Angels") {
+                window.location.href = "../Backend/templates/LosAngelesAngels.html";
+            } else if (team === "Los Angeles Dodgers") {
+                window.location.href = "../Backend/templates/LosAngelesDodgers.html";
+            } else if (team === "Miami Marlins") {
+                window.location.href = "../Backend/templates/MiamiMarlins.html";
+            } else if (team === "Milwaukee Brewers") {
+                window.location.href = "../Backend/templates/MilwaukeeBrewers.html";
+            } else if (team === "Minnesota Twins") {
+                window.location.href = "../Backend/templates/MinnesotaTwins.html";
+            } else if (team === "New York Mets") {
+                window.location.href = "../Backend/templates/NewYorkMets.html";
+            } else if (team === "New York Yankees") {
+                window.location.href = "../Backend/templates/NewYorkYankees.html";
+            } else if (team === "Oakland Athletics") {
+                window.location.href = "../Backend/templates/OaklandAthletics.html";
+            } else if (team === "Philadelphia Phillies") {
+                window.location.href = "../Backend/templates/PhiladelphiaPhillies.html";
+            } else if (team === "Pittsburgh Pirates") {
+                window.location.href = "../Backend/templates/PittsburghPirates.html";
+            } else if (team === "San Diego Padres") {
+                window.location.href = "../Backend/templates/SanDiegoPadres.html";
+            } else if (team === "San Francisco Giants") {
+                window.location.href = "../Backend/templates/SanFranciscoGiants.html";
+            } else if (team === "Seattle Mariners") {
+                window.location.href = "../Backend/templates/SeattleMariners.html";
+            } else if (team === "St. Louis Cardinals") {
+                window.location.href = "../Backend/templates/StLouisCardinals.html";
+            } else if (team === "Tampa Bay Rays") {
+                window.location.href = "../Backend/templates/TampaBayRays.html";
+            } else if (team === "Texas Rangers") {
+                window.location.href = "../Backend/templates/TexasRangers.html";
+            } else if (team === "Toronto Blue Jays") {
+                window.location.href = "../Backend/templates/TorontoBlueJays.html";
+            } else if (team === "Washington Nationals") {
+                window.location.href = "../Backend/templates/WashingtonNationals.html";
+            } else {
+                window.location.href = `../Backend/templates/team_home.html?team=${encodeURIComponent(team)}`;
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Earley First Pitch</h1>
+    <form onsubmit="goToTeamPage(event)">
+        <label for="team">Choose Your Favorite MLB Team:</label>
+        <select id="team" name="team">
+            <option value="Arizona Diamondbacks">Arizona Diamondbacks</option>
+            <option value="Atlanta Braves">Atlanta Braves</option>
+            <option value="Baltimore Orioles">Baltimore Orioles</option>
+            <option value="Boston Red Sox">Boston Red Sox</option>
+            <option value="Chicago Cubs">Chicago Cubs</option>
+            <option value="Chicago White Sox">Chicago White Sox</option>
+            <option value="Cincinnati Reds">Cincinnati Reds</option>
+            <option value="Cleveland Guardians">Cleveland Guardians</option>
+            <option value="Colorado Rockies">Colorado Rockies</option>
+            <option value="Detroit Tigers">Detroit Tigers</option>
+            <option value="Houston Astros">Houston Astros</option>
+            <option value="Kansas City Royals">Kansas City Royals</option>
+            <option value="Los Angeles Angels">Los Angeles Angels</option>
+            <option value="Los Angeles Dodgers">Los Angeles Dodgers</option>
+            <option value="Miami Marlins">Miami Marlins</option>
+            <option value="Milwaukee Brewers">Milwaukee Brewers</option>
+            <option value="Minnesota Twins">Minnesota Twins</option>
+            <option value="New York Mets">New York Mets</option>
+            <option value="New York Yankees">New York Yankees</option>
+            <option value="Oakland Athletics">Oakland Athletics</option>
+            <option value="Philadelphia Phillies">Philadelphia Phillies</option>
+            <option value="Pittsburgh Pirates">Pittsburgh Pirates</option>
+            <option value="San Diego Padres">San Diego Padres</option>
+            <option value="San Francisco Giants">San Francisco Giants</option>
+            <option value="Seattle Mariners">Seattle Mariners</option>
+            <option value="St. Louis Cardinals">St. Louis Cardinals</option>
+            <option value="Tampa Bay Rays">Tampa Bay Rays</option>
+            <option value="Texas Rangers">Texas Rangers</option>
+            <option value="Toronto Blue Jays">Toronto Blue Jays</option>
+            <option value="Washington Nationals">Washington Nationals</option>
+        </select>
+        <input type="submit" value="Submit">
+    </form>
+</body>
+</html>

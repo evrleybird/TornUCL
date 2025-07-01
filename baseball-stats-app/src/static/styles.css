@@ -1,0 +1,743 @@
+body {
+    background: #222; /* dark background for contrast */
+    color: #f5f5f5;   /* very light text */
+    font-family: 'Segoe UI', Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    width: fit-content;
+    min-width: 900px;
+    max-width: 100vw;
+    margin: 40px auto;
+    background: #232526;
+    border-radius: 18px;
+    box-shadow: 0 4px 24px 0 rgba(0,0,0,0.25);
+    padding: 32px 40px 40px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+h1, h2, label, th, td, .vs-text {
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+h1 {
+    font-size: 2.3rem;
+    margin-bottom: 18px;
+    text-align: center;
+    /* Increased opacity for the shadow */
+    text-shadow: 0 4px 16px rgba(0,0,0,0.75), 0 2px 4px rgba(0,0,0,0.55);
+}
+
+h2 {
+    margin-top: 32px;
+    margin-bottom: 12px;
+    font-size: 1.3rem;
+    text-align: left;
+}
+
+/* Add this for the Latest MLB News header */
+h2.news-header {
+    text-shadow: 0 4px 16px rgba(0,0,0,0.75), 0 2px 4px rgba(0,0,0,0.55);
+}
+
+/* Add drop shadow to "Today's Games" and "Latest MLB News" headers with slightly reduced effect */
+h2, h2.news-header {
+    text-shadow: 0 2px 8px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.28);
+}
+
+.team-form {
+    display: flex;
+    align-items: center;   /* Vertically center all items */
+    gap: 12px;
+    margin-bottom: 24px;
+    justify-content: center;
+}
+
+label, select, input[type="submit"] {
+    font-size: 1rem;
+}
+
+select, input[type="submit"] {
+    background: #232526;
+    border: 1.5px solid #fff;
+    color: #fff;
+    border-radius: 6px;
+    padding: 6px 12px;
+    margin-left: 6px;
+}
+
+input[type="submit"] {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+input[type="submit"]:hover {
+    background: #444;
+}
+
+.news-list {
+    list-style: none;
+    padding-left: 0;
+    margin-bottom: 0;
+}
+.news-list li {
+    margin-bottom: 6px;
+}
+.news-list a {
+    color: #fff;
+    text-decoration: underline;
+    transition: color 0.2s, text-shadow 0.2s, transform 0.2s;
+    /* Add smooth transition for new effects */
+}
+.news-list a:hover, .news-list a:focus {
+    color: #f5f5f5; /* white/gray instead of light blue */
+    text-shadow: 0 2px 8px #f5f5f555, 0 0px 2px #fff;
+    transform: translateY(-2px) scale(1.04);
+    text-decoration: underline;
+}
+
+.games-table-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+/* Responsive table container */
+.games-table-container {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Responsive tables */
+.games-table {
+    width: 100%;
+    min-width: 420px;
+    border-collapse: collapse;
+    table-layout: auto;
+    word-break: break-word;
+}
+
+.games-table th, .games-table td {
+    border: 1px solid #444;
+    padding: 10px 8px;
+    text-align: center;
+    color: #fff;
+    font-size: 1.08rem;
+    font-family: 'Arial Black', Arial, sans-serif;
+    font-weight: bold;
+}
+
+.games-table td {
+    background-color: #2d2f31; /* lighter than #222/#232526, stands out */
+}
+
+.games-table tr:hover td {
+    background-color: #393b3d;
+}
+
+.games-table th {
+    background-color: #181a1b;
+    font-size: 1.13rem;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #1a1d1f; /* Ensure header background covers content when sticky */
+}
+
+.matchup-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 2px 1px;
+    flex-wrap: wrap; /* Allow content to wrap on small screens */
+    min-width: 0;
+    word-break: break-word;
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.team-logo {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    vertical-align: middle;
+    margin: 0 2px;
+    filter: grayscale(1) brightness(1.2);
+    background: #fff;
+    border-radius: 50%;
+    border: 1px solid #444;
+}
+
+.vs-text {
+    margin: 0 4px;
+    font-weight: bold;
+    color: #bdbdbd;
+    font-size: 1.1em;
+}
+
+.back-home-btn {
+    display: inline-block;
+    margin: 32px auto 0 auto;
+    padding: 10px 28px;
+    background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
+    color: #fff;
+    font-weight: bold;
+    font-size: 1.1rem;
+    border: none;
+    border-radius: 24px;
+    text-decoration: none;
+    box-shadow: 0 2px 8px rgba(30,60,114,0.12);
+    transition: background 0.2s, transform 0.2s;
+    text-align: center;
+}
+.back-home-btn:hover, .back-home-btn:focus {
+    background: linear-gradient(90deg, #2a5298 0%, #1e3c72 100%);
+    color: #f5f5f5; /* white/gray instead of light blue */
+    transform: translateY(-2px) scale(1.03);
+    text-decoration: none;
+}
+
+.show-team-btn {
+    display: inline-block;
+    margin: 18px 0 0 0;
+    padding: 15px 28px;
+    background: linear-gradient(90deg, #5cc7ff 0%, #e6f7ff 100%);
+    color: #222;
+    font-weight: bold;
+    font-size: 1.1rem;
+    border: none;
+    border-radius: 24px;
+    text-decoration: none;
+    box-shadow: 0 2px 8px rgba(92,199,255,0.10);
+    transition: background 0.2s, color 0.2s, transform 0.2s, box-shadow 0.2s;
+    text-align: center;
+    cursor: pointer;
+}
+.show-team-btn:hover, .show-team-btn:focus {
+    background: linear-gradient(90deg, #e6f7ff 0%, #5cc7ff 100%);
+    color: #f5f5f5; /* white/gray instead of light blue */
+    transform: translateY(-1px) scale(1.01);
+    text-decoration: none;
+    box-shadow: 0 2px 8px #f5f5f533, 0 1px 4px #e6f7ffaa;
+}
+
+select#team {
+    background: #232526;
+    border: 1.5px solid #fff;
+    color: #fff;
+    border-radius: 6px;
+    padding: 6px 12px;
+    margin-left: 6px;
+    font-size: 1rem;
+    /* Remove text shadow for dropdown */
+    box-shadow:
+        0 2px 8px rgba(0,0,0,0.10),
+        0 4px 16px rgba(0,0,0,0.28);
+    text-shadow: none;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+select#team:hover, select#team:focus {
+    border-color: #f5f5f5;
+    box-shadow: 0 0 8px #f5f5f555;
+    background: #2d2f31 radial-gradient(circle at 50% 50%, #f5f5f522 0%, #2d2f31 100%);
+    color: #f5f5f5;
+    outline: none;
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+span[style*="#ffd700"], /* for inline styles in your templates */
+span[style*="color: #ffd700"] {
+    color: #5cc7ff !important;
+}
+
+/* Update table winner/leader/tie inline styles if present */
+span[style*="#ffd700"], span[style*="color: #ffd700"] {
+    color: #5cc7ff !important;
+}
+
+.score-cell {
+    min-width: 180px;
+    text-align: center;
+}
+
+.winner-rect {
+    background: #43a047;      /* green for finished games */
+    color: #fff;
+    font-weight: bold;
+    margin-left: 18px;
+    display: inline-block;
+    min-width: 120px;
+    padding: 2px 10px;
+    border-radius: 5px;
+    box-shadow: 0 2px 8px rgba(67,160,71,0.15);
+}
+
+.leader-rect {
+    background: #e53935;      /* red for in-progress games */
+    color: #fff;
+    font-weight: bold;
+    margin-left: 18px;
+    display: inline-block;
+    min-width: 120px;
+    padding: 2px 10px;
+    border-radius: 5px;
+    box-shadow: 0 2px 8px rgba(229,57,53,0.15);
+}
+
+/* Remove text stroke from all elements in the table */
+.games-table th,
+.games-table td,
+.score-cell,
+.winner-rect,
+.leader-rect,
+.matchup-cell span,
+.matchup-team,
+.game-start-time {
+    text-shadow: none !important;
+}
+
+/* styles.css */
+
+/* Example color mapping for a few teams. Expand as needed for all 30 teams. */
+.team-ARI { color: #e3d4ad; background: #a71930; }   /* Dbacks: sand on Sedona red */
+.team-ATL { color: #ce1141; background: #13274f; }   /* Braves: red on navy */
+.team-BAL { color: #fd5a1e; background: #000; }      /* Orioles: orange on black */
+.team-BOS { color: #bd3039; background: #0c2340; }   /* Red Sox: red on navy */
+.team-CHC { color: #cc3433; background: #0e3386; }   /* Cubs: red on blue */
+.team-CWS { color: #fff; background: #27251f; }      /* White Sox: white on black */
+.team-CIN { color: #c6011f; background: #000; }      /* Reds: red on black */
+.team-CLE { color: #e31937; background: #0f223e; }   /* Guardians: red on navy */
+.team-COL { color: #333366; background: #c4ced4; }   /* Rockies: purple on silver */
+.team-DET { color: #fa4616; background: #0c2340; }   /* Tigers: orange on navy */
+.team-HOU { color: #eb6e1f; background: #002d62; }   /* Astros: orange on navy */
+.team-KC  { color: #fff; background: #004687; }      /* Royals: white on blue */
+.team-LAA { color: #ba0021; background: #003263; }   /* Angels: red on blue */
+.team-LAD { color: #005a9c; background: #fff; }      /* Dodgers: blue on white */
+.team-MIA { color: #00a3e0; background: #000; }      /* Marlins: blue on black */
+.team-MIL { color: #ffc52f; background: #12284b; }   /* Brewers: yellow on navy */
+.team-MIN { color: #d31145; background: #002b5c; }   /* Twins: red on navy */
+.team-NYM { color: #ff5910; background: #002d72; }   /* Mets: orange on blue */
+.team-NYY { color: #003087; background: #fff; }      /* Yankees: blue on white */
+.team-OAK { color: #efb21e; background: #003831; }   /* Athletics: gold on green */
+.team-PHI { color: #e81828; background: #002d6c; }   /* Phillies: red on blue */
+.team-PIT { color: #ffb81c; background: #27251f; }   /* Pirates: yellow on black */
+.team-SD  { color: #ffc425; background: #2f241d; }   /* Padres: yellow on brown */
+.team-SF  { color: #fd5a1e; background: #27251f; }   /* Giants: orange on black */
+.team-SEA { color: #0c2c56; background: #005c5c; }   /* Mariners: navy on teal */
+.team-STL { color: #c41e3a; background: #0a2252; }   /* Cardinals: red on navy */
+.team-TB  { color: #8fbce6; background: #092c5c; }   /* Rays: light blue on navy */
+.team-TEX { color: #c0111f; background: #003278; }   /* Rangers: red on blue */
+.team-TOR { color: #134a8e; background: #e8291c; }   /* Blue Jays: blue on red */
+.team-WSH { color: #ab0003; background: #14225a; }   /* Nationals: red on navy */
+
+/* Rectangle styling */
+.matchup-team {
+    font-weight: bold;
+    border-radius: 7px;
+    padding: 2px 12px;
+    margin: 0 2px;
+    display: inline-block;
+    font-size: 1.1em;
+    box-shadow:
+        0 2px 8px rgba(0,0,0,0.10),   /* existing subtle shadow */
+        0 4px 16px rgba(0,0,0,0.35);  /* new deeper drop shadow */
+    text-shadow:
+        -1.45px -1.45px 0 #000,
+         1.45px -1.45px 0 #000,
+        -1.45px  1.45px 0 #000,
+         1.45px  1.45px 0 #000;
+}
+
+.game-start-time {
+    font-style: italic;
+    color: #ffd54f; /* gold/yellow for high contrast */
+    text-shadow:
+        -1.35px -1.35px 0 #000,
+         1.35px -1.35px 0 #000,
+        -1.35px  1.35px 0 #000,
+         1.35px  1.35px 0 #000;
+}
+
+.team-header-row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.team-header-logo {
+    width: 76px;
+    height: 76px;
+    object-fit: contain;
+    background: #ffffff;
+    border-radius: 18px;   /* Rounded edges, not a full circle */
+    border: 2.5px solid #000000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.team-header-name {
+    font-size: 2.2rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    line-height: 1;
+    /* fallback color */
+    color: #fff;
+    background: none;
+    background-clip: unset;
+    -webkit-background-clip: unset;
+    -webkit-text-fill-color: unset;
+}
+
+/* Minimal, modern font for all text except table headers and .team-header-name */
+body,
+.container,
+label,
+.games-table td,
+.games-table-container,
+.matchup-cell span,
+.matchup-team,
+.game-start-time,
+.back-home-btn,
+.back-home-btn-top,
+.show-team-btn,
+.pitcher-details,
+.pitcher-name,
+.pitcher-stats,
+.news-list,
+.news-list li,
+.news-list a,
+select,
+input[type="submit"] {
+    font-family: 'Inter', 'Roboto', Arial, sans-serif !important;
+    font-weight: 400 !important;
+    letter-spacing: 0.5px;
+}
+
+/* Exclude table headers and .team-header-name from font override */
+.games-table th,
+.team-header-name,
+h1, h2, h3, h4, h5, h6 {
+    /* Keep existing font-family and font-weight */
+    font-family: 'Arial Black', Arial, sans-serif;
+    font-weight: bold;
+}
+
+/* Use only the accent color for each team */
+.team-color-ARI { color: #a71930; }
+.team-color-ATL { color: #ce1141; }
+.team-color-BAL { color: #fd5a1e; }
+.team-color-BOS { color: #bd3039; }
+.team-color-CHC { color: #cc3433; }
+.team-color-CWS { color: #27251f; }
+.team-color-CIN { color: #c6011f; }
+.team-color-CLE { color: #e31937; }
+.team-color-COL { color: #333366; }
+.team-color-DET { color: #fa4616; }
+.team-color-HOU { color: #eb6e1f; }
+.team-color-KC  { color: #004687; }
+.team-color-LAA { color: #ba0021; }
+.team-color-LAD { color: #005a9c; }
+.team-color-MIA { color: #00a3e0; }
+.team-color-MIL { color: #ffc52f; }
+.team-color-MIN { color: #d31145; }
+.team-color-NYM { color: #ff5910; }
+.team-color-NYY { color: #003087; }
+.team-color-OAK { color: #efb21e; }
+.team-color-PHI { color: #e81828; }
+.team-color-PIT { color: #ffb81c; }
+.team-color-SD  { color: #ffc425; }
+.team-color-SF  { color: #fd5a1e; }
+.team-color-SEA { color: #0c2c56; }
+.team-color-STL { color: #c41e3a; }
+.team-color-TB  { color: #8fbce6; }
+.team-color-TEX { color: #c0111f; }
+.team-color-TOR { color: #134a8e; }
+.team-color-WSH { color: #ab0003; }
+
+@media (max-width: 700px) {
+    .games-table {
+        font-size: 0.95em;
+        min-width: 340px;
+    }
+    .games-table th, .games-table td {
+        padding: 6px 3px;
+    }
+    .matchup-cell {
+        flex-direction: column;
+        gap: 2px;
+        justify-content: flex-start;
+        align-items: flex-start;
+        text-align: left;
+    }
+    .team-logo {
+        margin-bottom: 2px;
+    }
+}
+
+.games-table td img {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 1.5px 6px rgba(0,0,0,0.10);
+    display: block;
+    margin: 0 auto;
+    width: 100%;
+    height: auto;
+    max-width: 48px;
+    max-height: 48px;
+    object-fit: contain;
+    background: #111111;
+    border-radius: 8px;
+}
+
+/* Add to your styles.css */
+.back-home-btn-top {
+    display: inline-block;
+    position: absolute;
+    top: 28px;
+    right: 36px;
+    margin: 0;
+    padding: 7px 18px;
+    font-size: 0.98rem;
+    border-radius: 18px;
+    background: linear-gradient(90deg, #b8b8b8 0%, #505050 100%);
+    color: #222;
+    font-weight: bold;
+    text-decoration: none;
+    box-shadow: 0 2px 8px rgba(92,199,255,0.10);
+    transition: background 0.2s, color 0.2s, transform 0.2s, box-shadow 0.2s;
+    text-align: center;
+    cursor: pointer;
+    z-index: 10;
+}
+.back-home-btn-top:hover, .back-home-btn-top:focus {
+    background: linear-gradient(90deg, #505050 0%, #b8b8b8 100%);
+    color: #222;
+    transform: translateY(-1px) scale(1.01);
+    text-decoration: none;
+    box-shadow: 0 2px 8px #f5f5f533, 0 1px 4px #e6f7ffaa;
+}
+
+/* Left justify Name and Position headers and make columns auto width */
+.games-table th:nth-child(3), /* Name header */
+.games-table th:nth-child(4)  /* Position header */ {
+    text-align: left;
+    padding-left: 18px;
+    white-space: nowrap;
+}
+
+.games-table td:nth-child(3), /* Name column */
+.games-table td:nth-child(4)  /* Position column */ {
+    text-align: left;
+    padding-left: 18px;
+    white-space: nowrap;
+}
+
+.games-table {
+    table-layout: auto;
+}
+
+.navbar {
+    background: #232526;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.navbar-container {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.navbar-item {
+    color: #f5f5f5;
+    text-decoration: none;
+    font-size: 1.1rem;
+    font-weight: bold;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: background 0.3s;
+}
+
+.navbar-item:hover {
+    background: #444;
+}
+
+.dropdown {
+    position: relative;
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: #232526;
+    padding: 10px;
+    border-radius: 6px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    z-index: 100;
+    max-height: 200px; /* Limit the height of the dropdown */
+    overflow-y: auto; /* Enable vertical scrolling */
+    width: 220px; /* Set a fixed width for the dropdown */
+}
+
+.dropdown:hover .dropdown-menu {
+    display: block;
+}
+
+.dropdown-item {
+    display: block;
+    color: #f5f5f5;
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    transition: background 0.3s;
+}
+
+.dropdown-item:hover {
+    background: #444;
+}
+
+.scrollable-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 260px;
+    max-height: 340px;
+    overflow-y: auto;
+    background: #232526;
+    padding: 10px 0;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    z-index: 100;
+}
+
+.navbar-item.dropdown:hover .scrollable-menu,
+.navbar-item.dropdown:focus-within .scrollable-menu {
+    display: block;
+}
+
+.team-item {
+    display: block;
+    color: #f5f5f5;
+    text-decoration: none;
+    padding: 10px 22px;
+    border-radius: 4px;
+    transition: background 0.2s;
+    font-size: 1.04rem;
+    white-space: nowrap;
+}
+
+.team-item:hover {
+    background: #444;
+    color: #ffd54f;
+}
+
+.season-table-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    width: 100%;
+    overflow-x: auto;
+    margin: 32px 0;
+    padding-bottom: 16px;
+    max-height: 950px; /* Adjust this value to fit 25 rows based on your row height */
+    overflow-y: auto;
+    background: #181a1b;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+}
+
+.season-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    min-width: 900px;
+    font-size: 1.02rem;
+    background: #232526;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.season-table th:first-child,
+.season-table td:first-child {
+    min-width: 260px;   /* Increased for Player Name */
+    max-width: 400px;
+    text-align: left;
+    font-weight: 600;
+    color: #ffd54f;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.season-table th, .season-table td {
+    border: 1px solid #393b3d;
+    padding: 10px 16px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.season-table th {
+    background: #1a1d1f;
+    color: #f5f5f5;
+    font-size: 1.08rem;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #1a1d1f; /* Ensure header background covers content when sticky */
+}
+
+.season-table tr:nth-child(even) {
+    background: #2d2f31;
+}
+
+.season-table tr:hover td {
+    background: #35383a;
+    color: #ffe082;
+}
+
+.season-table td {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 1.01rem;
+}
+
+/* Player Name column: odd rows (keep current yellow) */
+.season-table tbody tr:nth-child(odd) td:first-child {
+    color: #ffd54f;
+    background: inherit;
+}
+
+/* Player Name column: even rows (darker yellow) */
+.season-table tbody tr:nth-child(even) td:first-child {
+    color: #c9a93f;
+    background: inherit;
+}
+
+@media (max-width: 1100px) {
+    .season-table { min-width: 700px; }
+    .season-table th, .season-table td { padding: 8px 8px; }
+}
+
+/* New styles for dropdown in navbar */
+.navbar-item.dropdown > .navbar-item {
+    pointer-events: none;
+    color: #f5f5f5;
+    cursor: default;
+}
+.navbar-item.dropdown:hover > .navbar-item {
+    pointer-events: auto;
+    cursor: pointer;
+}
