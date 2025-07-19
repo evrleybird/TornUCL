@@ -872,7 +872,6 @@ def news_page():
         </ul>
     </div>
 </body>
-</html>
     """, news=news, teams=load_teams())
 
 @app.route("/about", methods=["GET"])
