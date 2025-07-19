@@ -6,6 +6,8 @@ from flask import Flask, render_template_string, request, url_for, send_from_dir
 import pytz
 from datetime import datetime
 import os
+import json
+from tabulate import tabulate
 
 app = Flask(__name__)
 
@@ -275,99 +277,333 @@ class TeamStats:
 def home():
     teams_df = load_teams()
     teams = teams_df.sort_values("displayName")[["displayName", "abbreviation", "logo"]].to_dict(orient="records")
+    abbr_logo_map = {team["abbreviation"]: team["logo"] for team in teams}
+    sp_map = get_probable_sp_map()
+    games_raw = [
+        dict(game, abbrs=game["abbrs"] if "abbrs" in game else [
+            abbr for abbr in game["teams"]
+        ]) for game in get_games_list()
+    ]
+    games = []
+    for game in games_raw:
+        abbr1, abbr2 = game["abbrs"][0], game["abbrs"][1]
+        # Use SP info from sp_map, fallback to "TBD"
+        p1 = sp_map.get(abbr1, {"name": "TBD", "era": "--", "wl": "--"})
+        p2 = sp_map.get(abbr2, {"name": "TBD", "era": "--", "wl": "--"})
+        game["pitchers"] = [p1, p2]
+        games.append(game)
     return render_template_string("""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Earley First Pitch</title>
-        <!-- Reference the minimalist, modern CSS -->
-        <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    </head>
-    <body>
-    <header class="navbar">
-        <div class="navbar-container">
-            <a href="/" class="navbar-item">Home</a>
-            <div class="navbar-item dropdown">
-                <span>Teams</span>
-                <div class="scrollable-menu">
-                    {% for team in teams %}
-                        <a href="/team?team={{ team.abbreviation }}" class="team-item">
-                            {{ team.displayName }}
-                        </a>
-                    {% endfor %}
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='efpitch.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <meta http-equiv="refresh" content="">
+    <style>
+        html, body { zoom: 0.95; background: #18191a; }
+        .games-bubble-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 32px;
+            margin-top: 32px;
+        }
+        .scorebug-bubble {
+            background: linear-gradient(135deg, #232526 80%, #2d2f31 100%);
+            border-radius: 22px;
+            box-shadow: 0 4px 24px 0 rgba(0,0,0,0.18);
+            padding: 28px 38px 18px 38px;
+            min-width: 340px;
+            max-width: 420px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 2.5px solid #444;
+            position: relative;
+            transition: box-shadow 0.2s;
+        }
+        .scorebug-bubble:hover {
+            box-shadow: 0 8px 32px 0 rgba(0,0,0,0.28);
+            border-color: #ffd54f;
+        }
+        .scorebug-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            gap: 18px;
+        }
+        .scorebug-team {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 90px;
+            justify-content: flex-end;
+        }
+        .scorebug-logo {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+            vertical-align: middle;
+            background: #fff;
+            border-radius: 50%;
+            border: 1.5px solid #ffd54f;
+        }
+        .scorebug-vs {
+            font-weight: 700;
+            font-size: 1.5em;
+            color: #ffd54f;
+            margin: 0 12px;
+            min-width: 32px;
+        }
+        .scorebug-score {
+            font-size: 2.2em;
+            font-weight: 800;
+            color: #fff;
+            margin: 0 18px;
+            min-width: 80px;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+        .scorebug-status {
+            margin-top: 8px;
+            font-size: 1.08em;
+            color: #ffd54f;
+            font-weight: 600;
+            text-align: center;
+            min-height: 1.5em;
+        }
+        .scorebug-dropdown {
+            width: 100%;
+            margin-top: 12px;
+            display: none;
+            animation: fadeIn 0.2s;
+        }
+        .scorebug-dropdown.active {
+            display: block;
+        }
+        .pitcher-stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            margin-bottom: 8px;
+        }
+        .pitcher-stats-table th, .pitcher-stats-table td {
+            border: 1px solid #666;
+            padding: 4px 10px;
+            text-align: center;
+        }
+        .pitcher-stats-table th {
+            background: #2d2f31;
+            color: #ffd54f;
+        }
+        .pitcher-name {
+            font-weight: 600;
+            color: #ffd54f;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @media (max-width: 700px) {
+            .scorebug-bubble { min-width: 98vw; max-width: 99vw; padding: 12px 2vw 10px 2vw; }
+            .scorebug-logo { width: 24px; height: 24px; }
+            .scorebug-team { min-width: 40px; }
+            .scorebug-score { font-size: 1.3em; min-width: 40px; }
+        }
+        .header-logo {
+            height: 256px;
+            width: 256px;
+            vertical-align: middle;
+            margin-right: 14px;
+            zoom: 1.25;
+        }
+        .header-title {
+            display: inline-block;
+            vertical-align: middle;
+            font-size: 2.1rem;
+            font-weight: 700;
+            color: #ffd54f;
+            letter-spacing: 1px;
+        }
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 24px;
+            margin-bottom: 18px;
+        }
+    </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            document.querySelectorAll(".scorebug-bubble").forEach(function(bubble, idx) {
+                bubble.addEventListener("click", function(e) {
+                    // Only toggle if not clicking a link
+                    if (e.target.tagName.toLowerCase() === "a") return;
+                    var dropdown = bubble.querySelector(".scorebug-dropdown");
+                    if (dropdown) {
+                        dropdown.classList.toggle("active");
+                        if (dropdown.classList.contains("active")) {
+                            setTimeout(function() {
+                                dropdown.scrollIntoView({behavior: "smooth", block: "nearest"});
+                            }, 100);
+                        }
+                    }
+                });
+            });
+        });
+
+        // --- Live score polling ---
+        function updateScores() {
+            fetch("/api/live-scores")
+                .then(response => response.json())
+                .then(data => {
+                    data.games.forEach(game => {
+                        const scoreId = `score-${game.abbrs[0]}-${game.abbrs[1]}`;
+                        const statusId = `status-${game.abbrs[0]}-${game.abbrs[1]}`;
+                        const scoreDiv = document.getElementById(scoreId);
+                        const statusDiv = document.getElementById(statusId);
+
+                        // Update score
+                        if (scoreDiv) {
+                            if (game.start_time_str) {
+                                scoreDiv.innerHTML = `<span class="game-start-time" style="font-size:0.95em; display:inline-block; width:100%; text-align:center;">${game.start_time_str}</span>`;
+                            } else {
+                                scoreDiv.textContent = `${game.scores[0]} - ${game.scores[1]}`;
+                            }
+                        }
+
+                        // Update status
+                        if (statusDiv) {
+                            if (game.winner) {
+                                statusDiv.innerHTML = `<span class="winner-rect">${game.winner} Win</span>`;
+                            } else if (game.leader) {
+                                statusDiv.innerHTML = `<span class="leader-rect">${game.leader}</span>`;
+                            } else if (game.start_time_str) {
+                                statusDiv.innerHTML = "";
+                            } else {
+                                statusDiv.innerHTML = `<span>Currently Tied</span>`;
+                            }
+                        }
+                    });
+                });
+        }
+        setInterval(updateScores, 15000);
+    </script>
+</head>
+<body>
+<header class="navbar">
+    <div class="navbar-container">
+        <a href="/" class="navbar-item">Home</a>
+        <div class="navbar-item dropdown">
+            <span>Teams</span>
+            <div class="scrollable-menu">
+                {% for team in teams %}
+                    <a href="/team?team={{ team.abbreviation }}" class="team-item">
+                        {{ team.displayName }}
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+        <a href="/standings" class="navbar-item">Standings</a>
+        <a href="/news" class="navbar-item">News</a>
+        <div class="navbar-item dropdown season-dropdown">
+            <span>Seasons</span>
+            <div class="scrollable-menu">
+                {% for y in range(2024, 2014, -1) %}
+                    <a href="/season/{{ y }}" class="team-item">{{ y }}</a>
+                {% endfor %}
+            </div>
+        </div>
+        <a href="/about" class="navbar-item">About Us</a>
+    </div>
+</header>
+<div class="container">
+    <div class="header-row">
+        <img src="{{ url_for('static', filename='efpitch.png') }}" alt="Earley First Pitch Logo" class="header-logo">
+    </div>
+    <h2>Today's Games</h2>
+    <div class="games-bubble-container">
+        {% for game in games %}
+        <div class="scorebug-bubble" tabindex="0" style="cursor:pointer;">
+            <div class="scorebug-row">
+                <div class="scorebug-team">
+                    {% set abbr1 = game['abbrs'][0] %}
+                    {% set logo1 = abbr_logo_map.get(abbr1) %}
+                    {% if logo1 %}
+                        <img src="{{ logo1 }}" alt="{{ abbr1 }} logo" class="scorebug-logo">
+                    {% endif %}
+                    <span style="font-weight:600;">{{ abbr1 }}</span>
+                </div>
+                <div class="scorebug-vs">vs.</div>
+                <div class="scorebug-team">
+                    {% set abbr2 = game['abbrs'][1] %}
+                    {% set logo2 = abbr_logo_map.get(abbr2) %}
+                    {% if logo2 %}
+                        <img src="{{ logo2 }}" alt="{{ abbr2 }} logo" class="scorebug-logo">
+                    {% endif %}
+                    <span style="font-weight:600;">{{ abbr2 }}</span>
                 </div>
             </div>
-            <a href="/news" class="navbar-item">News</a>
-            <!-- Seasons dropdown moved here -->
-            <div class="navbar-item dropdown season-dropdown">
-                <span>Seasons</span>
-                <div class="scrollable-menu">
-                    {% for year in range(2024, 2014, -1) %}
-                        <a href="/season/{{ year }}" class="team-item">
-                            {{ year }}
-                        </a>
-                    {% endfor %}
+            <div class="scorebug-score" id="score-{{ game.abbrs[0] }}-{{ game.abbrs[1] }}">
+                {% if game.start_time_str %}
+                    <span class="game-start-time" style="font-size:0.95em; display:inline-block; width:100%; text-align:center;">
+                        {{ game.start_time_str }}
+                    </span>
+                {% else %}
+                    {{ game.scores[0] }} - {{ game.scores[1] }}
+                {% endif %}
+            </div>
+            <div class="scorebug-status" id="status-{{ game.abbrs[0] }}-{{ game.abbrs[1] }}">
+                {% if game.postponed %}
+        <span class="postponed-rect">Postponed</span>
+    {% elif game.winner %}
+        <span class="winner-rect">{{ game.winner }} Win</span>
+    {% elif game.leader %}
+        <span class="leader-rect">{{ game.leader }}</span>
+    {% elif game.start_time_str %}
+        <!-- Show nothing, already shown above -->
+    {% else %}
+        <span>Currently Tied</span>
+    {% endif %}
+            </div>
+            <div class="scorebug-dropdown">
+                <div>
+                    <strong>Pitching Matchup:</strong>
+                    <div style="margin-top:8px;">
+                        <table class="pitcher-stats-table">
+                            <thead>
+                                <tr>
+                                    <th>Team</th>
+                                    <th>Pitcher</th>
+                                    <th>ERA</th>
+                                    <th>W-L</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>{{ abbr1 }}</td>
+                                    <td class="pitcher-name">{{ game.pitchers[0].name }}</td>
+                                    <td>{{ game.pitchers[0].era }}</td>
+                                    <td>{{ game.pitchers[0].wl }}</td>
+                                </tr>
+                                <tr>
+                                    <td>{{ abbr2 }}</td>
+                                    <td class="pitcher-name">{{ game.pitchers[1].name }}</td>
+                                    <td>{{ game.pitchers[1].era }}</td>
+                                    <td>{{ game.pitchers[1].wl }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <span style="color:#bbb; font-size:0.98em;">Click again to hide.</span>
+                    </div>
                 </div>
             </div>
-            <a href="/about" class="navbar-item">About Us</a>
         </div>
-    </header>
-    <div class="container">
-            <h1>Earley First Pitch</h1>
-            <h2>Today's Games</h2>
-            <div class="games-table-container">
-                <table class="games-table">
-                    <thead>
-                        <tr>
-                            <th>Matchup</th>
-                            <th>Score</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for game in games %}
-                            <tr>
-                                <td class="matchup-cell">
-                                    {% for t in game.teams %}
-                                        {% set logo = None %}
-                                        {% for team in teams %}
-                                            {% if team['displayName'] == t %}
-                                                {% set logo = team['logo'] %}
-                                            {% endif %}
-                                        {% endfor %}
-                                        {% if logo %}
-                                            <img src="{{logo}}" alt="{{t}} logo" class="team-logo">
-                                        {% endif %}
-                                        <span>{{t}}</span>
-                                        {% if not loop.last %}
-                                            <span class="vs-text">vs.</span>
-                                        {% endif %}
-                                    {% endfor %}
-                                </td>
-                                <td style="min-width:180px; text-align:center;">
-                                    {% if game.start_time_str %}
-                                        <span class="game-start-time">{{ game.start_time_str }}</span>
-                                    {% else %}
-                                        {{ game.scores[0] }} - {{ game.scores[1] }}
-                                        {% if game.winner %}
-                                            <span class="winner-rect">
-                                                {{ game.winner }} Win
-                                            </span>
-                                        {% elif game.leader %}
-                                            <span class="leader-rect">
-                                                {{ game.leader }}
-                                            </span>
-                                        {% endif %}
-                                    {% endif %}
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </body>
-    </html>
-    """, teams=teams, news=get_news_list(), games=get_games_list())
+        {% endfor %}
+    </div>
+</div>
+</body>
+</html>
+""", teams=teams, news=get_news_list(), games=games, abbr_logo_map=abbr_logo_map)
 
 # Team page with logo and today's games for that team
 @app.route("/team", methods=["GET"])
@@ -386,9 +622,14 @@ def team_page():
             matchup = " vs. ".join([f"{row['team_name']} ({row['score']})" for _, row in game.iterrows()])
             status = game['status'].iloc[0]
             event_time_utc = game['event_time_utc'].iloc[0]
-            # Determine score display
             score_display = ""
             start_time_str = None
+            postponed = False
+
+            # Detect postponed status (ESPN API may use "Postponed" or similar)
+            if "postponed" in status.lower():
+                postponed = True
+
             if status.lower() in ["scheduled", "pre-game", "pre"]:
                 tz = pytz.timezone(get_team_timezone(abbrs[0]))
                 try:
@@ -419,22 +660,34 @@ def team_page():
             else:
                 score_display = "N/A"
             team_games.append({"matchup": " vs. ".join(teams), "score": score_display})
+    
+    # --- New Section: Determine the Probable Starting Pitcher ---
+    pitcher_for_team = None
+    data = get_today_scoreboard_data()
+    for event in data.get("events", []):
+        for comp in event.get("competitions", []):
+            current_abbrs = [c["team"]["abbreviation"] for c in comp.get("competitors", [])]
+            if abbr in current_abbrs:
+                pitchers = get_pitching_matchup({"abbrs": current_abbrs})
+                idx = current_abbrs.index(abbr)
+                pitcher_for_team = pitchers[idx]
+                break
+        if pitcher_for_team:
+            break
 
     # --- Roster Section ---
     roster_url = TEAM_ROSTER_API.get(abbr)
     roster_data = fetch_api_data(roster_url) if roster_url else {}
     players = roster_data.get("athletes", []) if roster_data else []
 
-    # Organize players
+    # Organize players and fetch stats
     position_players = []
     pitchers_sp = []
     pitchers_rp = []
 
-    # Helper to extract last name for sorting
     def get_last_name(full_name):
         return full_name.split()[-1] if full_name else ""
 
-    # Infield and outfield position abbreviations
     infield_positions = {"1B", "2B", "3B", "SS", "C"}
     outfield_positions = {"LF", "CF", "RF", "OF"}
 
@@ -443,21 +696,26 @@ def team_page():
             continue
         for player in group.get("items", []):
             pos = player.get("position", {}).get("abbreviation", "")
-            # Always use the abbreviation for display
             display_pos = pos
+            stats = player.get("stats", [])
+            # Extract key stats for dropdown
+            stat_map = {}
+            for stat in stats:
+                name = stat.get("name", "").lower()
+                value = stat.get("displayValue", stat.get("value", ""))
+                stat_map[name] = value
             player_info = {
                 "name": player.get("fullName"),
                 "number": player.get("jersey"),
                 "pos": pos,
                 "display_pos": display_pos,
                 "headshot": player.get("headshot", {}).get("href") if player.get("headshot") else None,
+                "stats": stat_map
             }
-            # Pitchers
             if pos == "SP":
                 pitchers_sp.append(player_info)
             elif pos == "RP":
                 pitchers_rp.append(player_info)
-            # Position Players
             elif pos in infield_positions or pos in outfield_positions or pos not in ["SP", "RP", "P"]:
                 position_players.append(player_info)
 
@@ -509,97 +767,146 @@ def team_page():
 <head>
     <title>{{team.displayName}} - MLB Team Info</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .player-row { cursor: pointer; }
+        .player-dropdown { display: none; background: #232526; color: #fff; }
+        .player-dropdown.active { display: table-row; animation: fadeIn 0.2s; }
+        .player-dropdown td { padding: 16px 24px; border-top: none; }
+        .player-stats-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        .player-stats-table th, .player-stats-table td { border: 1px solid #666; padding: 4px 10px; text-align: center; }
+        .player-stats-table th { background: #2d2f31; color: #ffd54f; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .pitcher-stats-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        .pitcher-stats-table th, .pitcher-stats-table td { border: 1px solid #666; padding: 4px 10px; text-align: center; }
+        .pitcher-stats-table th { background: #2d2f31; color: #ffd54f; }
+    </style>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll(".roster-table tbody tr.player-row").forEach(function(row, idx) {
+            row.addEventListener("click", function() {
+                var dropdown = document.getElementById("player-dropdown-" + idx);
+                if (dropdown) {
+                    dropdown.classList.toggle("active");
+                    if (dropdown.classList.contains("active")) {
+                        setTimeout(function() {
+                            dropdown.scrollIntoView({behavior: "smooth", block: "nearest"});
+                        }, 100);
+                    }
+                }
+            });
+        });
+    });
+    </script>
 </head>
 <body>
     <div class="container">
-        <a href="/" class="back-home-btn back-home-btn-top">Back to Home</a>
-        <div class="team-header-row">
-    {% if team.logo %}
-        <img src="{{team.logo}}" alt="{{team.displayName}} logo" class="team-header-logo">
-    {% endif %}
-    <h1 class="team-header-name team-color-{{team.abbreviation}}">
-        {{team.displayName}}
-    </h1>
-</div>
-            <h2>Today's Games</h2>
-            <div class="games-table-container">
-                <table class="games-table">
+        <div class="team-container">
+            <!-- Team Header -->
+            <div class="team-header-row">
+                {% if team.logo %}
+                    <img src="{{ team.logo }}" alt="{{ team.displayName }} Logo" class="team-header-logo">
+                {% endif %}
+                <h1 class="team-header-name">{{ team.displayName }}</h1>
+            </div>
+
+            <!-- Player Table -->
+            <h2 class="team-section-title">Roster</h2>
+            <div class="player-table-container">
+                <table class="player-table">
                     <thead>
                         <tr>
-                            <th>Matchup</th>
-                            <th>Score</th>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Position</th>
+                            <th>AVG</th>
+                            <th>HR</th>
+                            <th>RBI</th>
                         </tr>
                     </thead>
                     <tbody>
-                    {% for game in team_games %}
+                        {% for player in position_players %}
                         <tr>
-                            <td>{{game.matchup}}</td>
-                            <td>
-                                {{game.score}}
-                            </td>
+                            <td>{{ player.number }}</td>
+                            <td>{{ player.name }}</td>
+                            <td>{{ player.display_pos }}</td>
+                            <td>{{ player.stats.get('avg', '--') }}</td>
+                            <td>{{ player.stats.get('hr', '--') }}</td>
+                            <td>{{ player.stats.get('rbi', '--') }}</td>
                         </tr>
-                    {% endfor %}
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
-            <h2>Roster</h2>
 
-<h3 style="margin-top:32px; margin-bottom:10px;">Position Players</h3>
-<table class="games-table" style="margin-bottom: 36px;">
-    <thead>
-        <tr>
-            <th>#</th>
-            <th></th>
-            <th>Name</th>
-            <th>Position</th>
-        </tr>
-    </thead>
-    <tbody>
-    {% for player in position_players %}
-        <tr>
-            <td>{{ player.number }}</td>
-            <td>
-                {% if player.headshot %}
-                    <img src="{{ player.headshot }}" alt="{{ player.name }} headshot" style="width:48px; height:48px; object-fit:cover; vertical-align:middle;">
-                {% endif %}
-            </td>
-            <td>{{ player.name }}</td>
-            <td>{{ player.display_pos }}</td>
-        </tr>
-    {% endfor %}
-    </tbody>
-</table>
+            <!-- Rotation Table -->
+            <h2 class="team-section-title">Rotation</h2>
+            <div class="player-table-container">
+                <table class="player-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>ERA</th>
+                            <th>W-L</th>
+                            <th>IP</th>
+                            <th>K</th>
+                            <th>BB</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for player in pitchers if player.pos == "SP" %}
+                        <tr>
+                            <td>{{ player.number }}</td>
+                            <td>{{ player.name }}</td>
+                            <td>{{ player.stats.get('era', '--') }}</td>
+                            <td>{{ player.stats.get('wl', '--') }}</td>
+                            <td>{{ player.stats.get('ip', '--') }}</td>
+                            <td>{{ player.stats.get('k', '--') }}</td>
+                            <td>{{ player.stats.get('bb', '--') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
 
-<h3 style="margin-top:32px; margin-bottom:10px;">Pitchers</h3>
-<table class="games-table">
-    <thead>
-        <tr>
-            <th>#</th>
-            <th></th>
-            <th>Name</th>
-            <th>Position</th>
-        </tr>
-    </thead>
-    <tbody>
-    {% for player in pitchers %}
-        <tr>
-            <td>{{ player.number }}</td>
-            <td>
-                {% if player.headshot %}
-                    <img src="{{ player.headshot }}" alt="{{ player.name }} headshot" style="width:48px; height:48px; object-fit:cover; vertical-align:middle;">
-                {% endif %}
-            </td>
-            <td>{{ player.name }}</td>
-            <td>{{ player.display_pos }}</td>
-        </tr>
-    {% endfor %}
-    </tbody>
-</table>
-            <a href="/" class="back-home-btn">Back to Home</a>
+            <!-- Bullpen Table -->
+            <h2 class="team-section-title">Bullpen</h2>
+            <div class="player-table-container">
+                <table class="player-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>ERA</th>
+                            <th>W-L</th>
+                            <th>IP</th>
+                            <th>K</th>
+                            <th>BB</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for player in pitchers if player.pos == "RP" %}
+                        <tr>
+                            <td>{{ player.number }}</td>
+                            <td>{{ player.name }}</td>
+                            <td>{{ player.stats.get('era', '--') }}</td>
+                            <td>{{ player.stats.get('wl', '--') }}</td>
+                            <td>{{ player.stats.get('ip', '--') }}</td>
+                            <td>{{ player.stats.get('k', '--') }}</td>
+                            <td>{{ player.stats.get('bb', '--') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Back to Home Button -->
+            <a href="/" class="back-to-home">Back to Home</a>
         </div>
-    </body>
-    </html>
-    """, team=team, team_games=team_games,
+    </div>
+</body>
+</html>
+    """, team=team, team_games=team_games, pitcher_for_team=pitcher_for_team,
          position_players=position_players, pitchers=pitchers)
 
 def get_news_list():
@@ -622,15 +929,14 @@ def get_games_list():
         outs = 0
         on_base = False
         for _, row in game.iterrows():
-            teams.append(row['team_name'])
+            teams.append(row['team_abbr'])  # <-- Use abbreviation here
             scores.append(row['score'])
             abbrs.append(row['team_abbr'])
-            # Extract ball, strike, outs, and on-base data if available
             balls = row.get('balls', balls)
             strikes = row.get('strikes', strikes)
             outs = row.get('outs', outs)
             on_base = row.get('on_base', on_base)
-        matchup = " vs. ".join(teams)
+        matchup = " vs. ".join(teams)  # This will now show "ATL vs. NYM" etc.
         score_str = " - ".join(str(s) for s in scores)
         status = game['status'].iloc[0]
         event_time_utc = game['event_time_utc'].iloc[0]
@@ -638,6 +944,11 @@ def get_games_list():
         winner_score = None
         leader = None
         start_time_str = None
+        postponed = False
+
+        # Detect postponed status (ESPN API may use "Postponed" or similar)
+        if "postponed" in status.lower():
+            postponed = True
 
         # Try to extract inning info from status (ESPN API may use "Top Xth", "Bottom Xth", etc.)
         import re
@@ -692,6 +1003,7 @@ def get_games_list():
             start_time_str = f"Starts @ {hour}:{minute} {ampm} {tzname}"
         games.append({
             "teams": teams,
+            "abbrs": abbrs,
             "scores": scores,
             "matchup": matchup,
             "score_str": score_str,
@@ -700,12 +1012,80 @@ def get_games_list():
             "winner_score": winner_score,
             "leader": leader,
             "start_time_str": start_time_str,
-            "balls": balls,  # Added balls tracker
-            "strikes": strikes,  # Added strikes tracker
-            "outs": outs,  # Added outs tracker
-            "on_base": on_base  # Added on-base tracker
+            "balls": balls,
+            "strikes": strikes,
+            "outs": outs,
+            "on_base": on_base,
+            "postponed": postponed  # <-- add this line
         })
     return games
+
+def get_today_scoreboard_data():
+    """
+    Fetch and return today's MLB scoreboard data from ESPN's API.
+    """
+    url = "http://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard"
+    return fetch_api_data(url)
+
+def get_pitching_matchup(game):
+    """
+    Returns a tuple of dictionaries for the probable SPs for each team in the matchup.
+    Each dictionary contains: name, era, wl (W-L), ip, k, bb.
+    """
+    try:
+        data = get_today_scoreboard_data()
+        for event in data.get("events", []):
+            for comp in event.get("competitions", []):
+                # Get the abbreviations for both teams in this competition
+                comp_abbrs = [c["team"]["abbreviation"] for c in comp.get("competitors", [])]
+                # Only process if this is the correct matchup
+                if set(game["abbrs"]) == set(comp_abbrs):
+                    # Build a map of team_abbr -> probable SP info
+                    starters = {abbr: {
+                        "name": "TBD", "era": "--", "wl": "--", "ip": "--", "k": "--", "bb": "--"
+                    } for abbr in comp_abbrs}
+                    probables = [p for p in comp.get("probables", []) if p.get("athlete")]
+                    for probable in probables:
+                        athlete = probable.get("athlete", {})
+                        pos = athlete.get("position", {}).get("abbreviation", "")
+                        if pos != "SP":
+                            continue
+                        team = athlete.get("team", {})
+                        team_abbr = team.get("abbreviation")
+                        stats = {}
+                        stat_list = athlete.get("statistics") or athlete.get("stats") or []
+                        for s in stat_list:
+                            name = s.get("name", "").lower()
+                            value = s.get("value") or s.get("displayValue", "--")
+                            stats[name] = value
+                        wl = f"{stats.get('wins', '--')}-{stats.get('losses', '--')}"
+                        starters[team_abbr] = {
+                            "name": athlete.get("fullName", "TBD"),
+                            "era": stats.get("era", "--"),
+                            "wl": wl,
+                            "ip": stats.get("inningspitched", "--"),
+                            "k": stats.get("strikeouts", "--"),
+                            "bb": stats.get("walks", "--"),
+                        }
+                    # Return SPs in the order of game["abbrs"]
+                    result = []
+                    for abbr in game["abbrs"]:
+                        result.append(starters.get(abbr, {
+                            "name": "TBD",
+                            "era": "--",
+                            "wl": "--",
+                            "ip": "--",
+                            "k": "--",
+                            "bb": "--"
+                        }))
+                    return tuple(result)
+    except Exception as e:
+        print(f"Error fetching pitching matchup: {e}")
+    # Default fallback
+    return (
+        {"name": "TBD", "era": "--", "wl": "--", "ip": "--", "k": "--", "bb": "--"},
+        {"name": "TBD", "era": "--", "wl": "--", "ip": "--", "k": "--", "bb": "--"}
+    )
 
 # Convert published date string to a more readable format
 def format_published_date(date_str):
@@ -739,13 +1119,31 @@ def teams_page():
 </head>
 <body>
     <header class="navbar">
-        <div class="navbar-container">
-            <a href="/" class="navbar-item">Home</a>
-            <a href="/teams" class="navbar-item">Teams</a>
-            <a href="/news" class="navbar-item">News</a>
-            <a href="/about" class="navbar-item">About Us</a>
+    <div class="navbar-container">
+        <a href="/" class="navbar-item">Home</a>
+        <div class="navbar-item dropdown">
+            <span>Teams</span>
+            <div class="scrollable-menu">
+                {% for team in teams %}
+                    <a href="/team?team={{ team.abbreviation }}" class="team-item">
+                        {{ team.displayName }}
+                    </a>
+                {% endfor %}
+            </div>
         </div>
-    </header>
+        <a href="/standings" class="navbar-item">Standings</a>
+        <a href="/news" class="navbar-item">News</a>
+        <div class="navbar-item dropdown season-dropdown">
+            <span>Seasons</span>
+            <div class="scrollable-menu">
+                {% for y in range(2024, 2014, -1) %}
+                    <a href="/season/{{ y }}" class="team-item">{{ y }}</a>
+                {% endfor %}
+            </div>
+        </div>
+        <a href="/about" class="navbar-item">About Us</a>
+    </div>
+</header>
     <div class="container">
         <h1>Teams</h1>
         <ul class="teams-list">
@@ -834,30 +1232,31 @@ def news_page():
 </head>
 <body>
     <header class="navbar">
-        <div class="navbar-container">
-            <a href="/" class="navbar-item">Home</a>
-            <div class="navbar-item dropdown">
-                <span>Teams</span>
-                <div class="scrollable-menu">
-                    {% for team in teams %}
-                        <a href="/team?team={{ team.abbreviation }}" class="team-item">
-                            {{ team.displayName }}
-                        </a>
-                    {% endfor %}
-                </div>
+    <div class="navbar-container">
+        <a href="/" class="navbar-item">Home</a>
+        <div class="navbar-item dropdown">
+            <span>Teams</span>
+            <div class="scrollable-menu">
+                {% for team in teams %}
+                    <a href="/team?team={{ team.abbreviation }}" class="team-item">
+                        {{ team.displayName }}
+                    </a>
+                {% endfor %}
             </div>
-            <a href="/news" class="navbar-item">News</a>
-            <div class="navbar-item dropdown season-dropdown">
-                <span>Seasons</span>
-                <div class="scrollable-menu">
-                    {% for y in range(2024, 2014, -1) %}
-                        <a href="/season/{{ y }}" class="team-item">{{ y }}</a>
-                    {% endfor %}
-                </div>
-            </div>
-            <a href="/about" class="navbar-item">About Us</a>
         </div>
-    </header>
+        <a href="/standings" class="navbar-item">Standings</a>
+        <a href="/news" class="navbar-item">News</a>
+        <div class="navbar-item dropdown season-dropdown">
+            <span>Seasons</span>
+            <div class="scrollable-menu">
+                {% for y in range(2024, 2014, -1) %}
+                    <a href="/season/{{ y }}" class="team-item">{{ y }}</a>
+                {% endfor %}
+            </div>
+        </div>
+        <a href="/about" class="navbar-item">About Us</a>
+    </div>
+</header>
     <div class="news-container">
         <h1>Latest MLB News</h1>
         <ul class="news-list">
@@ -872,7 +1271,6 @@ def news_page():
         </ul>
     </div>
 </body>
-</html>
     """, news=news, teams=load_teams())
 
 @app.route("/about", methods=["GET"])
@@ -886,13 +1284,31 @@ def about_page():
 </head>
 <body>
     <header class="navbar">
-        <div class="navbar-container">
-            <a href="/" class="navbar-item">Home</a>
-            <a href="/teams" class="navbar-item">Teams</a>
-            <a href="/news" class="navbar-item">News</a>
-            <a href="/about" class="navbar-item">About Us</a>
+    <div class="navbar-container">
+        <a href="/" class="navbar-item">Home</a>
+        <div class="navbar-item dropdown">
+            <span>Teams</span>
+            <div class="scrollable-menu">
+                {% for team in teams %}
+                    <a href="/team?team={{ team.abbreviation }}" class="team-item">
+                        {{ team.displayName }}
+                    </a>
+                {% endfor %}
+            </div>
         </div>
-    </header>
+        <a href="/standings" class="navbar-item">Standings</a>
+        <a href="/news" class="navbar-item">News</a>
+        <div class="navbar-item dropdown season-dropdown">
+            <span>Seasons</span>
+            <div class="scrollable-menu">
+                {% for y in range(2024, 2014, -1) %}
+                    <a href="/season/{{ y }}" class="team-item">{{ y }}</a>
+                {% endfor %}
+            </div>
+        </div>
+        <a href="/about" class="navbar-item">About Us</a>
+    </div>
+</header>
     <div class="container">
         <h1>About Us</h1>
         <p>Earley First Pitch is your one-stop destination for MLB stats, news, and updates. Stay tuned for the latest information on your favorite teams and players!</p>
@@ -1047,6 +1463,270 @@ def process_batter_stats_csv(csv_path):
     return display_columns, rows
 
 # Make sure to have a load_teams() function that returns your teams list for the navbar.
+
+@app.route("/standings", methods=["GET"])
+def standings_page():
+    # Use ESPN's public MLB standings API (live data)
+    url = "https://site.api.espn.com/apis/v2/sports/baseball/mlb/standings"
+    data = fetch_api_data(url)
+    divisions = {
+        "AL East": [], "AL Central": [], "AL West": [],
+        "NL East": [], "NL Central": [], "NL West": []
+    }
+    division_order = ["AL East", "AL Central", "AL West", "NL East", "NL Central", "NL West"]
+
+    # Parse the API response for each division
+    groups = data.get("standings", {}).get("groups", [])
+    for group in groups:
+        div_name = group.get("name", "")
+        # Defensive: match division name to our keys
+        for key in divisions.keys():
+            if key.lower() in div_name.lower():
+                div_name = key
+                break
+        if div_name in divisions:
+            for team in group.get("standings", []):
+                team_info = team.get("team", {})
+                stats = {s["name"]: s for s in team.get("stats", [])}
+                wins = stats.get("wins", {}).get("value", "-")
+                losses = stats.get("losses", {}).get("value", "-")
+                pct = stats.get("winPercent", {}).get("displayValue", "-")
+                gb = stats.get("gamesBehind", {}).get("displayValue", "-")
+                logo = ""
+                if team_info.get("logos"):
+                    logo = team_info["logos"][0].get("href", "")
+                divisions[div_name].append({
+                    "name": team_info.get("displayName", ""),
+                    "abbreviation": team_info.get("abbreviation", ""),
+                    "logo": logo,
+                    "wins": wins,
+                    "losses": losses,
+                    "pct": pct,
+                    "gb": gb
+                })
+
+    return render_template_string("""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>MLB Standings - Earley First Pitch</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+        <meta http-equiv="refresh" content="120">
+        <style>
+            .standings-dashboard {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                grid-template-rows: repeat(2, auto);
+                gap: 32px;
+                margin: 40px auto;
+                max-width: 1400px;
+                width: 95vw;
+            }
+            .division-card {
+                background: #232526;
+                border-radius: 14px;
+                box-shadow: 0 4px 18px rgba(0,0,0,0.14);
+                padding: 24px 18px 18px 18px;
+                min-width: 320px;
+                max-width: 99vw;
+            }
+            .division-title {
+                color: #ffd54f;
+                font-size: 1.25rem;
+                font-weight: 700;
+                margin-bottom: 16px;
+                letter-spacing: 0.5px;
+                text-align: center;
+            }
+            .standings-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 1.01rem;
+                background: transparent;
+            }
+            .standings-table th, .standings-table td {
+                border: none;
+                padding: 7px 8px;
+                text-align: center;
+                white-space: nowrap;
+            }
+            .standings-table th {
+                color: #ffd54f;
+                font-weight: bold;
+                background: none;
+                border-bottom: 1.5px solid #444;
+            }
+            .standings-table tr:nth-child(even) td {
+                background: #2d2f31;
+            }
+            .standings-team-logo {
+                width: 28px;
+                height: 28px;
+                object-fit: contain;
+                vertical-align: middle;
+                margin-right: 8px;
+            }
+            .standings-team-name {
+                font-weight: 600;
+                color: #fff;
+                text-align: left;
+            }
+            @media (max-width: 1200px) {
+                .standings-dashboard { grid-template-columns: 1fr; grid-template-rows: none; }
+                .division-card { min-width: unset; }
+            }
+        </style>
+    </head>
+    <body>
+        <header class="navbar">
+            <div class="navbar-container">
+                <a href="/" class="navbar-item">Home</a>
+                <div class="navbar-item dropdown">
+                    <span>Teams</span>
+                    <div class="scrollable-menu">
+                        {% for team in teams %}
+                            <a href="/team?team={{ team.abbreviation }}" class="team-item">
+                                {{ team.displayName }}
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                <a href="/standings" class="navbar-item">Standings</a>
+                <a href="/news" class="navbar-item">News</a>
+                <div class="navbar-item dropdown season-dropdown">
+                    <span>Seasons</span>
+                    <div class="scrollable-menu">
+                        {% for y in range(2024, 2014, -1) %}
+                            <a href="/season/{{ y }}" class="team-item">{{ y }}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+                <a href="/about" class="navbar-item">About Us</a>
+            </div>
+        </header>
+        <div class="container">
+            <h1>MLB Standings</h1>
+            <div class="standings-dashboard">
+                {% for division, teams in divisions.items() %}
+                <div class="division-card">
+                    <div class="division-title">{{ division }}</div>
+                    <table class="standings-table">
+                        <thead>
+                            <tr>
+                                <th>Team</th>
+                                <th>Wins</th>
+                                <th>Losses</th>
+                                <th>Win%</th>
+                                <th>GB</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for team in teams %}
+                            <tr>
+                                <td style="text-align: left;">
+                                    <img src="{{ team.logo }}" alt="{{ team.name }} logo" class="standings-team-logo">
+                                    {{ team.name }}
+                                </td>
+                                <td>{{ team.wins }}</td>
+                                <td>{{ team.losses }}</td>
+                                <td>{{ team.pct }}</td>
+                                <td>{{ team.gb }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </body>
+    </html>
+    """, divisions=divisions, teams=load_teams())
+
+@app.route("/pitching", methods=["GET"])
+def pitching_page():
+    data = get_today_scoreboard_data()
+    # For simplicity, we'll use the first event and its first competition
+    event = data.get("events", [])[0]
+    comp = event.get("competitions", [])[0]
+   
+    teams = [c["team"]["abbreviation"] for c in comp["competitors"]]
+    matchup = get_pitching_matchup({"abbrs": teams})
+    
+    # Build table rows for tabulate
+    headers = ["Team", "Pitcher", "W-L", "IP", "ERA", "K", "BB"]
+    rows = [
+        [teams[0], matchup[0]["name"], matchup[0]["wl"], matchup[0]["ip"], matchup[0]["era"], matchup[0]["k"], matchup[0]["bb"]],
+        [teams[1], matchup[1]["name"], matchup[1]["wl"], matchup[1]["ip"], matchup[1]["era"], matchup[1]["k"], matchup[1]["bb"]],
+    ]
+    table_str = tabulate(rows, headers=headers, tablefmt="grid")
+    return f"<pre>{table_str}</pre>"
+
+def parse_probable_sp_info():
+    url = "http://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard"
+    data = requests.get(url).json()
+    results = []
+
+    for event in data.get("events", []):
+        for comp in event.get("competitions", []):
+            for probable in comp.get("probables", []):
+                athlete = probable.get("athlete", {})
+                position = athlete.get("position", {}).get("abbreviation")
+                if position != "SP":
+                    continue  # Only SPs
+                team = athlete.get("team", {})
+                team_id = team.get("id")
+                team_abbr = team.get("abbreviation")
+                player_id = athlete.get("id")
+                full_name = athlete.get("fullName")
+                # Find stats
+                stats = athlete.get("statistics") or athlete.get("stats") or []
+                wins = losses = era = None
+                for stat in stats:
+                    name = stat.get("name", "").lower()
+                    value = stat.get("value") or stat.get("displayValue")
+                    if name == "wins":
+                        wins = value
+                    elif name == "losses":
+                        losses = value
+                    elif name == "era":
+                        era = value
+                results.append({
+                    "team_id": team_id,
+                    "team_abbr": team_abbr,
+                    "player_id": player_id,
+                    "full_name": full_name,
+                    "wins": wins,
+                    "losses": losses,
+                    "era": era
+
+                })
+    return results
+
+# --- Add this helper at the top or near your parse_probable_sp_info() ---
+def get_probable_sp_map():
+    """Returns a dict: {team_abbr: {name, era, wl}} for all probable SPs today."""
+    sp_map = {}
+    for sp in parse_probable_sp_info():
+        sp_map[sp["team_abbr"]] = {
+            "name": sp["full_name"] or "TBD",
+            "era": sp["era"] or "--",
+            "wl": f"{sp['wins'] or '--'}-{sp['losses'] or '--'}"
+        }
+    return sp_map
+
+# Example usage:
+for sp in parse_probable_sp_info():
+    print(sp)
+
+@app.route("/api/live-scores")
+def api_live_scores():
+    games = get_games_list()
+    abbr_logo_map = {team["abbreviation"]: team["logo"] for team in load_teams().to_dict(orient="records")}
+    return {
+        "games": games,
+        "abbr_logo_map": abbr_logo_map
+    }
 
 if __name__ == "__main__":
     app.run(debug=True)
