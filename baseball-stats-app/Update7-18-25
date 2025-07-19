@@ -1,0 +1,23 @@
+Current Outstanding Issues:
+
+Live data is not pulling correctly for team pages (AVG, HR, RBI, ERA, K’s, etc.).
+
+Historical season data is not loading properly on the Seasons tab in the navbar.
+
+Pitching matchups are failing to display starting pitchers for the current game.
+
+Recent Changes & Improvements:
+✅ Added new logo/header for updated site branding.
+✅ Re-formatted team pages for improved readability and visual consistency; tables now display data more cleanly.
+✅ Updated scorebug format — cleaner, more modern look for individual game score displays.
+
+Next Steps / In Progress:
+
+Re-introducing player headshots to enhance roster pages.
+
+Investigating solutions for live data integration and season historical data loading issues.
+
+Troubleshooting pitching matchup feed or API connections.
+
+Brainstorming / Open for Feedback:
+Currently considering ideas for new features to further improve site value and user experience. All suggestions or input are welcome.
